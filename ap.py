@@ -15,8 +15,8 @@ ap_this_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll'),"html.p
 last_week=ap_this_week.find('h2',{'class':'block-title'}).contents[0]
 this_week=int(last_week[last_week.find(' ')+1:].strip())
 last_week=this_week-1
-last_week=2
-this_week=3
+
+
 ap_last_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll/2015/'+str(last_week)),"html.parser")
 teams={}
 flair=BeautifulSoup(loadUrl('https://www.reddit.com/r/CFB/wiki/inlineflair'),"html.parser").getText()
@@ -27,7 +27,7 @@ order=[]
 def apProcess(ap,pre=''):
     global teams
     global order
-    ap_conversions={'Mississippi':'Ole Miss', 'W. Kentucky':'Western Kentucky','Brigham Young':'BYU'}
+    ap_conversions={'Mississippi':'Ole Miss', 'W. Kentucky':'Western Kentucky','Brigham Young':'BYU','Miami':'Miami (FL)'}
     ap_table=ap.find('table')
     rows=ap_table.findAll('tr')
     for row in rows:
@@ -56,6 +56,8 @@ def apProcess(ap,pre=''):
         team=team_data[::-1]
         votes=team[:team.find(' ')][::-1].strip()
         team=team[team.find(' ')+1:][::-1].strip()
+        if team.count('(') != 0:
+            team=team[:team.find('(')].strip()
         if team in ap_conversions: team=ap_conversions[team]
         team=team.replace(' St.',' State')
         rank='NR'
