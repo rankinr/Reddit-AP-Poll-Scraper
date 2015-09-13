@@ -138,8 +138,17 @@ for team in order:
     if not 'last_week_game' in teamData or not 'last_week_score' in teamData:
         teamData['last_week_score']='Bye'
         teamData['last_week_game']=''
+    else:
+        teamLastWeek=teamData['last_week_game'].strip()[teamData['last_week_game'].strip().find(' ')+1:].strip()
+        if teamLastWeek in teams and 'rank' in teams[teamLastWeek] and teams[teamLastWeek]['rank'] != 'NR':
+            teamData['last_week_game']=teamData['last_week_game'][:teamData['last_week_game'].find(' ')].strip()+' ('+teams[teamLastWeek]['rank']+') '+teamData['last_week_game'][teamData['last_week_game'].find(' ')+1:].strip()
+ 
     last_week=teamData['last_week_score']+' '+teamData['last_week_game']
     if not 'next_week_game' in teamData: teamData['next_week_game']='Bye'
+    else:
+        teamNextWeek=teamData['next_week_game'][teamData['next_week_game'].find(' ')+1:].strip()
+        if teamNextWeek in teams and 'rank' in teams[teamNextWeek] and teams[teamNextWeek]['rank'] != 'NR':
+            teamData['next_week_game']=teamData['next_week_game'][:teamData['next_week_game'].find(' ')].strip()+' ('+teams[teamNextWeek]['rank']+') '+teamData['next_week_game'][teamData['next_week_game'].find(' ')+1:].strip()
     if 'rank' in teamData: rk=teamData['rank']
     else: rk='NR'
 
