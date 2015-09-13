@@ -32,7 +32,12 @@ def apProcess(ap,pre=''):
     rows=ap_table.findAll('tr')
     for row in rows:
         rank=row.find('td',{'class':'trank'}).contents[0]
-        team=row.find('div',{'class':'poll-team-name'}).a.contents[0]
+        team=row.find('div',{'class':'poll-team-name'})
+        first_place_votes=team.getText()
+        if first_place_votes.count('(') != 0:
+            first_place_votes=first_place_votes[first_place_votes.find('(')+1:first_place_votes.find(')')]
+        else: first_place_votes=''
+        team=team.a.contents[0]
         if team in ap_conversions: team=ap_conversions[team]
         team=team.replace(' St.',' State')
         votes=row.find('div',{'class':'info-votes-wrap'}).getText().replace('Points','').strip()
@@ -46,6 +51,7 @@ def apProcess(ap,pre=''):
         teams[team][pre+'votes']=votes
         teams[team][pre+'conference']=conference
         teams[team][pre+'record']=record
+        teams[team][pre+'first_place_votes']=first_place_votes
         if pre=='': order.append(team)
     ap_other=ap.find('div',{'class':'poll-footer'}).p.contents[0]
     ap_other=ap_other[ap_other.find(':')+1:].strip()
@@ -153,7 +159,12 @@ for team in order:
     if 'conference' in teamData and teamData['conference'].strip() != '': conference=teamData['conference']
     else: conference=' conference'
 
+    if not 'first_place_votes' in teamData or teamData['first_place_votes'].strip() == '':
+        teamData['first_place_votes']=''
+    else:
+        teamData['first_place_votes']=' ('+teamData['first_place_votes']+')'
+
     
-    thisRow=[rk,teamData['flair'],team,votes,record+confRecord+' '+conference,teamData['next_week_game'],rankChange,last_week]
+    thisRow=[rk,teamData['flair'],team+teamData['first_place_votes'],votes,record+confRecord+' '+conference,teamData['next_week_game'],rankChange,last_week]
     final_text+='|'.join(thisRow)+'\n'
 open('output.txt','w').write(final_text)
