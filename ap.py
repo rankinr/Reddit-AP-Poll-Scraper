@@ -11,10 +11,12 @@ def loadUrl(url):
 		data=urllib.request.urlopen(url).read().decode('utf-8','ignore')
 		open(local_url,'w',encoding='utf8').write(data)
 	return data
-ap_this_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll'),"html.parser")
+ap_this_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll/t=now'),"html.parser")
 last_week=ap_this_week.find('h2',{'class':'block-title'}).contents[0]
 this_week=int(last_week[last_week.find(' ')+1:].strip())
 last_week=this_week-1
+
+conf_flairs={'ACC':'[ACC](#l/acc)','American':'[American](#l/aac)','Big 12':'[Big 12](#l/big12)','Big Ten':'[Big Ten](#l/bigten)','Conference USA':'[Conference USA](#l/cusa)','Division I FBS Independents':'[FBS Independents](#l/indep)','MAC':'[MAC](#l/mac)','Mountain West':'[Mountain West](#l/mwc)','Pac-12':'[Pac-12](#l/pac12)','SEC':'[SEC](#l/sec)','Sun Belt':'[Sun Belt](#l/sunbelt)'}
 
 
 ap_last_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll/2015/'+str(last_week)),"html.parser")
@@ -49,6 +51,7 @@ def apProcess(ap,pre=''):
 		if not team in teams:
 			teams[team]={}
 			print ('No record of '+team+'. Perhaps a bye week? Or a mismatch between ESPN and AP?')
+		if conference in conf_flairs: conference=conf_flairs[conference]
 		teams[team][pre+'rank']=rank
 		teams[team][pre+'votes']=votes
 		teams[team][pre+'conference']=conference
@@ -79,11 +82,11 @@ def apProcess(ap,pre=''):
 				if not team in teams: 
 					print ('No record of '+team+'. Perhaps a bye week? Or a mismatch between ESPN and AP?')
 					teams[team]={}
-				teams[team][pre+'rank']=rank
-				teams[team][pre+'votes']=votes
-				teams[team][pre+'conference']=conference
-				teams[team][pre+'record']=record
-				if pre=='': order.append(team)
+			teams[team][pre+'rank']=rank
+			teams[team][pre+'votes']=votes
+			teams[team][pre+'conference']=conference
+			teams[team][pre+'record']=record
+			if pre=='': order.append(team)
 
 
 def espnProcess(games,pre=''):
@@ -111,15 +114,13 @@ def espnProcess(games,pre=''):
 		elif int(teamscores[1]) < int(teamscores[0]):
 			teams[team[0]][pre+'score']='**W** '+teamscores[0]+'-'+teamscores[1]
 			teams[team[1]][pre+'score']='**L** '+teamscores[0]+'-'+teamscores[1]
-		if pre != '':
-			if game['competitions'][0]['competitors'][0]['records'][3]['type']=='vsconf':
-				teams[team[0]]['confRecord']=game['competitions'][0]['competitors'][0]['records'][3]['summary']
-				teams[team[0]]['Record']=game['competitions'][0]['competitors'][0]['records'][0]['summary']
-			else: print ('error')
-			if game['competitions'][0]['competitors'][1]['records'][3]['type']=='vsconf':
-				teams[team[1]]['confRecord']=game['competitions'][0]['competitors'][1]['records'][3]['summary']
-				teams[team[1]]['Record']=game['competitions'][0]['competitors'][1]['records'][0]['summary']
-			else: print('error')
+		if game['competitions'][0]['competitors'][0]['records'][3]['type']=='vsconf':
+			if game['competitions'][0]['competitors'][0]['records'][3]['summary'] != '': teams[team[0]]['confRecord']=game['competitions'][0]['competitors'][0]['records'][3]['summary']
+			if game['competitions'][0]['competitors'][0]['records'][0]['summary'] != '': teams[team[0]]['Record']=game['competitions'][0]['competitors'][0]['records'][0]['summary']
+		else: print ('error')
+		if game['competitions'][0]['competitors'][1]['records'][3]['type']=='vsconf':
+			if game['competitions'][0]['competitors'][1]['records'][3]['summary'] != '': teams[team[1]]['confRecord']=game['competitions'][0]['competitors'][1]['records'][3]['summary']
+			if game['competitions'][0]['competitors'][1]['records'][0]['summary'] != '': teams[team[1]]['Record']=game['competitions'][0]['competitors'][1]['records'][0]['summary']
 espnProcess(games_this_week,'last_week_')
 espnProcess(games_next_week,'next_week_')
 apProcess(ap_this_week)
@@ -136,7 +137,7 @@ for team,data in teams.items():
 			print ('No flair record for '+teamString+'. Perhaps a mismatch between ESPN and /r/cfb?')
 		data['flair']=team_flair
 ork='-1'
-final_text='Rk| |Team|Votes (Chg)|Record|Next Week|Chg|Last week\n:--|:--|:--|:--|:--|:--|:--|:--|:--|\n'
+final_text='Rk| |Team|Chg|Votes (Chg)|Last week|Record|Next Week\n:--|:--|:--|:--|:--|:--|:--|:--|:--|\n'
 for team in order:
 	teamData=teams[team]
 	if 'rank' in teamData and 'last_week_rank' in teamData and teamData['rank'] != 'NR' and teamData['last_week_rank'] != 'NR': rankChange=str(int(teamData['last_week_rank'])-int(teamData['rank']))
@@ -160,7 +161,8 @@ for team in order:
 	else: rk='NR'
 
 	if 'votes' in teamData:
-		if not 'last_week_votes' in teamData: teamData['last_week_votes']='0'
+		if not 'last_week_votes' in teamData:
+			teamData['last_week_votes']='0'
 		voteChange=str(int(teamData['votes'].replace(',',''))-int(teamData['last_week_votes'].replace(',','')))
 		if voteChange[0] != '-': voteChange='+'+voteChange
 		votes=teamData['votes']+' ('+voteChange+')'
@@ -181,9 +183,9 @@ for team in order:
 		teamData['first_place_votes']=' ('+teamData['first_place_votes']+')'
 
 	if ork != 'NR' and rk == 'NR':
-		final_text+='\n\nOthers receiving votes:\n\n'+'Rk| |Team|Votes (Chg)|Record|Next Week|Chg|Last week\n:--|:--|:--|:--|:--|:--|:--|:--|:--|\n'
+		final_text+='\n\nOthers receiving votes:\n\n'+'Rk| |Team|Chg|Votes (Chg)|Last week|Record|Next Week\n:--|:--|:--|:--|:--|:--|:--|:--|:--|\n'
 	ork=rk
-	thisRow=[rk,teamData['flair'],team+teamData['first_place_votes'],votes,record+confRecord+' '+conference,teamData['next_week_game'],rankChange,last_week]
+	thisRow=[rk,teamData['flair'],team+teamData['first_place_votes'],rankChange,votes,last_week,record+confRecord+' '+conference,teamData['next_week_game']]
 	final_text+='|'.join(thisRow)+'\n'
 open('output.txt','w').write(final_text)
 #records for teams on byes
