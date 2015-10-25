@@ -15,10 +15,10 @@ ap_this_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll/t=now'),"
 last_week=ap_this_week.find('h2',{'class':'block-title'}).contents[0]
 if last_week.count('Week') != 0: last_week=last_week.replace('Week','').strip()
 this_week=int(last_week[last_week.find(' ')+1:].strip())
-
+last_week=this_week-1
 conf_flairs={'ACC':'[ACC](#l/acc)','American':'[American](#l/aac)','American Athletic':'[American](#l/aac)','The American':'[American](#l/aac)','Big 12':'[Big 12](#l/big12)','Big Ten':'[Big Ten](#l/bigten)','Conference USA':'[Conference USA](#l/cusa)','Division I FBS Independents':'[FBS Independents](#l/indep)','FBS Independents':'[FBS Independents](#l/indep)','Mid-American':'[MAC](#l/mac)','Mountain West':'[Mountain West](#l/mwc)','Pac-12':'[Pac-12](#l/pac12)','SEC':'[SEC](#l/sec)','Sun Belt':'[Sun Belt](#l/sunbelt)'}
-
-
+print (last_week)
+print (this_week)
 ap_last_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll/2015/'+str(last_week)),"html.parser")
 teams={}
 flair=BeautifulSoup(loadUrl('https://www.reddit.com/r/CFB/wiki/inlineflair'),"html.parser").getText()
@@ -135,7 +135,7 @@ espnProcess(games_this_week,'last_week_')
 espnProcess(games_next_week,'next_week_')
 apProcess(ap_this_week)
 apProcess(ap_last_week,'last_week_')
-
+print (last_week_ranks)
 rcfb_conversions={'Miami (FL)':'Miami','Florida Intl':'Florida International','Stephen F Austin':'Stephen F. Austin','Texas San Antonio':'UTSA','Southern Mississippi':'Southern Miss','Louisiana Lafayette':'Louisiana','Presbyterian College':'Presbyterian','Monmouth':'Monmouth (IL)','Massachusetts':'UMass','Hawaii':"Hawai'i",'Louisiana Monroe':'Louisiana-Monroe','NC State':'North Carolina State'}
 for team,data in teams.items():
 		if team in rcfb_conversions: teamString=rcfb_conversions[team]
