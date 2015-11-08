@@ -1,4 +1,5 @@
 # This has been tested in Python 3.5 with BeautifulSoup 4 installed.
+#	This particular file remains a work in progress. I think I will integrate it with a javascript browser-based script to get the rankings up faster, inputting them as they're announced on television.
 
 from bs4 import BeautifulSoup
 import json, urllib.request
@@ -11,14 +12,16 @@ def loadUrl(url):
 		data=urllib.request.urlopen(url).read().decode('utf-8','ignore')
 		open(local_url,'w',encoding='utf8').write(data)
 	return data
-ap_this_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll/'),"html.parser")
-last_week=ap_this_week.find('h2',{'class':'block-title'}).contents[0]
-if last_week.count('Week') != 0: last_week=last_week.replace('Week','').strip()
-this_week=int(last_week[last_week.find(' ')+1:].strip())
-last_week=this_week-1
+ap_this_week=BeautifulSoup(loadUrl('http://www.collegefootballplayoff.com/view-rankings'),"html.parser")
+last_week='9'
+#if last_week.count('Week') != 0: last_week=last_week.replace('Week','').strip()
+#this_week=int(last_week[last_week.find(' ')+1:].strip())
+#last_week=this_week-1
+this_week=11
+last_week=10
 conf_flairs={'ACC':'[ACC](#l/acc)','American':'[American](#l/aac)','American Athletic':'[American](#l/aac)','The American':'[American](#l/aac)','Big 12':'[Big 12](#l/big12)','Big Ten':'[Big Ten](#l/bigten)','Conference USA':'[Conference USA](#l/cusa)','Division I FBS Independents':'[FBS Independents](#l/indep)','FBS Independents':'[FBS Independents](#l/indep)','Mid-American':'[MAC](#l/mac)','Mountain West':'[Mountain West](#l/mwc)','Pac-12':'[Pac-12](#l/pac12)','SEC':'[SEC](#l/sec)','Sun Belt':'[Sun Belt](#l/sunbelt)'}
-print (last_week)
-print (this_week)
+#print (last_week)
+#print (this_week)
 ap_last_week=BeautifulSoup(loadUrl('http://collegefootball.ap.org/poll/2015/'+str(last_week)),"html.parser")
 teams={}
 flair=BeautifulSoup(loadUrl('https://www.reddit.com/r/CFB/wiki/inlineflair'),"html.parser").getText()
@@ -42,60 +45,18 @@ def apProcess(ap,pre=''):
 	global ap_teams # to prevent from overwriting rankings on the second round if AP hasn't updated the others receiving votes div
 	global last_week_ranks
 	ap_conversions={'Mississippi':'Ole Miss', 'W. Kentucky':'Western Kentucky','Brigham Young':'BYU','Miami':'Miami (FL)','Southern Cal':'USC'}
-	ap_table=ap.find('table')
+	ap_table=ap.find('table', {'class':'tablepress-id-24'})
+	print (ap_table)
 	rows=ap_table.findAll('tr')
 	for row in rows:
-		rank=row.find('td',{'class':'trank'}).contents[0]
-		team=row.find('div',{'class':'poll-team-name'})
-		first_place_votes=team.getText()
-		if first_place_votes.count('(') != 0:
-			first_place_votes=first_place_votes[first_place_votes.find('(')+1:first_place_votes.find(')')]
-		else: first_place_votes=''
-		team=team.a.contents[0]
-		if team in ap_conversions: team=ap_conversions[team]
-		team=team.replace(' St.',' State')
-		votes=row.find('div',{'class':'info-votes-wrap'}).getText().replace('Points','').strip()
-		conference=row.find('div',{'class':'poll-conference'}).a.contents[0]
-		record=row.find('div',{'class':'poll-record'}).contents[0]
-		record=record[record.find(':')+1:].strip()
-		if not team in teams:
-			teams[team]={}
-			print ('No record of '+team+'. Perhaps a bye week? Or a mismatch between ESPN and AP?')
-		teams[team][pre+'rank']=rank
-		if pre=='last_week_': last_week_ranks[team]=rank
-		teams[team][pre+'votes']=votes
-		teams[team][pre+'conference']=conference
-		teams[team][pre+'record']=record
-		teams[team][pre+'first_place_votes']=first_place_votes
-		if pre=='': order.append(team)
-	ap_other=ap.find('div',{'class':'poll-footer'})
-	if ap_other != None:
-		ap_other=ap_other.find('p').contents[0]
-		ap_other=ap_other[ap_other.find(':')+1:].strip()
-		if ap_other.count(',') > ap_other.count(';'): separator=','
-		else: separator=';'
-		ap_other=ap_other.split(separator)
-		for team_data in ap_other:
-			team_data=team_data.strip()
-			team=team_data[::-1]
-			votes=team[:team.find(' ')][::-1].strip()
-			team=team[team.find(' ')+1:][::-1].strip()
-			if team.count('(') != 0:
-				team=team[:team.find('(')].strip()
+		cols=row.findAll('td')
+		if len(cols) > 0:
+			rank=cols[0].getText()
+			team=cols[1].getText().strip()
 			if team in ap_conversions: team=ap_conversions[team]
 			team=team.replace(' St.',' State')
-			rank='NR'
-			conference=''
-			record=''
-			if not team in ap_teams:
-				ap_teams.append(team)
-				if not team in teams: 
-					print ('No record of '+team+'. Perhaps a bye week? Or a mismatch between ESPN and AP?')
-					teams[team]={}
 			teams[team][pre+'rank']=rank
-			teams[team][pre+'votes']=votes
-			teams[team][pre+'conference']=conference
-			teams[team][pre+'record']=record
+			if pre=='last_week_': last_week_ranks[team]=rank
 			if pre=='': order.append(team)
 
 
@@ -134,7 +95,7 @@ def espnProcess(games,pre=''):
 espnProcess(games_this_week,'last_week_')
 espnProcess(games_next_week,'next_week_')
 apProcess(ap_this_week)
-apProcess(ap_last_week,'last_week_')
+#apProcess(ap_last_week,'last_week_')
 print (last_week_ranks)
 rcfb_conversions={'Miami (FL)':'Miami','Florida Intl':'Florida International','Stephen F Austin':'Stephen F. Austin','Texas San Antonio':'UTSA','Southern Mississippi':'Southern Miss','Louisiana Lafayette':'Louisiana','Presbyterian College':'Presbyterian','Monmouth':'Monmouth (IL)','Massachusetts':'UMass','Hawaii':"Hawai'i",'Louisiana Monroe':'Louisiana-Monroe','NC State':'North Carolina State'}
 for team,data in teams.items():
@@ -169,13 +130,7 @@ for team in order:
 	if 'rank' in teamData: rk=teamData['rank']
 	else: rk='NR'
 
-	if 'votes' in teamData:
-		if not 'last_week_votes' in teamData:
-			teamData['last_week_votes']='0'
-		voteChange=str(int(teamData['votes'].replace(',',''))-int(teamData['last_week_votes'].replace(',','')))
-		if voteChange[0] != '-': voteChange='+'+voteChange
-		votes=teamData['votes']+' ('+voteChange+')'
-	else: votes='N/A'
+	votes='N/A'
 
 	if 'Record' in teamData and teamData['Record'].strip() != '': record=teamData['Record']+', '
 	else: record=''
@@ -188,15 +143,12 @@ for team in order:
 		if team in confs: conference=confs[team]
 		else: conference=' conference'
 	if conference in conf_flairs: conference=conf_flairs[conference]
-	if not 'first_place_votes' in teamData or teamData['first_place_votes'].strip() == '':
-		teamData['first_place_votes']=''
-	else:
-		teamData['first_place_votes']=' ('+teamData['first_place_votes']+')'
+
 
 	if ork != 'NR' and rk == 'NR':
-		final_text+='\n\nOthers receiving votes:\n\n'+'Rk| |Team|Chg|Votes (Chg)|Last week|Record|Next Week\n:--|:--|:--|:--|:--|:--|:--|:--|:--|\n'
-	ork=rk
-	thisRow=[rk,teamData['flair'],team+teamData['first_place_votes'],rankChange,votes,last_week,record+confRecord+' '+conference,teamData['next_week_game']]
+		ork=rk
+	thisRow=[rk,teamData['flair'],team,record+confRecord+' '+conference]
 	final_text+='|'.join(thisRow)+'\n'
+open('data.txt','w').write(json.dumps(teams))
 open('output.txt','w').write(final_text)
 #records for teams on byes

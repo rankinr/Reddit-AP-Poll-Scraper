@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import json, urllib.request
 from collections import Counter
 import statistics
-import copy
+import copy,operator
 ap_conversions={'Mississippi':'Ole Miss', 'W. Kentucky':'Western Kentucky','Brigham Young':'BYU','Miami':'Miami (FL)','Southern Cal':'USC'}
 def loadUrl(url):
 	try:
@@ -15,10 +15,12 @@ def loadUrl(url):
 		open(local_url,'w',encoding='utf8').write(data)
 	return data
 ap_teams=[]
+teams_ranks={}
 def apProcess(ap,pre=''):
 	global teams
 	global order
 	global ap_teams # to prevent from overwriting rankings on the second round if AP hasn't updated the others receiving votes div
+	global teams_ranks
 	ap_conversions={'Mississippi':'Ole Miss', 'W. Kentucky':'Western Kentucky','Brigham Young':'BYU','Miami':'Miami (FL)','Southern Cal':'USC'}
 	ap_table=ap.find('table')
 	rows=ap_table.findAll('tr')
@@ -44,9 +46,12 @@ def apProcess(ap,pre=''):
 		teams[team][pre+'conference']=conference
 		teams[team][pre+'record']=record
 		teams[team][pre+'first_place_votes']=first_place_votes
+		teams_ranks[team]=int(rank)
 		if pre=='': order.append(team)
 	ap_other=ap.find('div',{'class':'poll-footer'})
+	other_rk=25
 	if ap_other != None:
+		other_rk+=1
 		ap_other=ap_other.find('p').contents[0]
 		ap_other=ap_other[ap_other.find(':')+1:].strip()
 		if ap_other.count(',') > ap_other.count(';'): separator=','
@@ -62,6 +67,7 @@ def apProcess(ap,pre=''):
 			if team in ap_conversions: team=ap_conversions[team]
 			team=team.replace(' St.',' State')
 			rank='NR'
+			teams_ranks[team]=int(other_rk)
 			conference=''
 			record=''
 			if not team in ap_teams:
@@ -85,6 +91,8 @@ votes_with_26={}
 votes_with_voters={}
 voter_urls={}
 voters=ap_main.findAll('span',{'class':'poll-voter'})
+total_ranks=0
+voter_diff={}
 for voter in voters:
 	#print ('http://collegefootball.ap.org'+str(voter.find('a')['href']))
 	v_url=BeautifulSoup(loadUrl('http://collegefootball.ap.org'+str(voter.find('a')['href'])),"html.parser")
@@ -93,7 +101,9 @@ for voter in voters:
 	voter_name=voter_name[voter_name.find('As Voted by'):]
 	voter_name=voter_name[voter_name.find('>')+1:]
 	voter_name=str(voter_name[:voter_name.find('<')])
+	if not voter_name in voter_diff: voter_diff[voter_name]=0
 	voter_urls[voter_name]='http://collegefootball.ap.org'+str(voter.find('a')['href'])
+	votes_list_check=list(range(1,26))
 	for vote in v_url.findAll('td',{'class':'tname'}):
 		team=vote.a.getText().strip()
 		if team in ap_conversions: team=ap_conversions[team]
@@ -101,13 +111,19 @@ for voter in voters:
 			votes[team]=[]
 			votes_with_nr[team]=[]
 			votes_with_26[team]=[]
+		voter_diff[voter_name]+=abs(teams_ranks[team]-int(rank))
 		votes[team].append(int(rank))
+		total_ranks+=int(rank)
+		votes_list_check.pop(votes_list_check.index(int(rank)))
 		votes_with_nr[team].append(int(rank))
 		votes_with_26[team].append(int(rank))
 		if not team in votes_with_voters: votes_with_voters[team]={}
 		if not str(rank) in votes_with_voters[team]: votes_with_voters[team][str(rank)]=[]
 		votes_with_voters[team][str(rank)].append(voter_name)
 		rank+=1
+	if len(votes_list_check) != 0:
+		print (votes_list_check)
+		print (voter)
 final_text='Team|Min|Max|Mode|Mean|Median\n:--|:--|:--|:--|:--|:--|\n'
 for a,b in votes_with_nr.items():
 	while len(b) < len(voters): b.append('NR')
@@ -147,4 +163,15 @@ for team in order:
 		median=str(statistics.median(votes_with_26[a]))
 		if median == '26': median='NR'
 		final_text+=a+'|'+maxx+'|'+minn+'|'+mode+'|'+mean+'|'+median+'\n'
+print (total_ranks)
+voter_c = reversed(sorted(voter_diff.items(), key=operator.itemgetter(1)))
+ct = 0
+final_text+='\n\nMost controversial ballots:\n\nVoter|Average Difference from Poll\n:--|:--|\n'
+print (voter_c)
+for c in voter_c:
+	a=c[0]
+	b=c[1]
+	a='['+a+']('+voter_urls[a]+')'
+	ct+=1
+	if ct <= 10: final_text+=a+'|'+str(round(b/25,1))+'\n'
 open('output.txt','w').write(final_text)
