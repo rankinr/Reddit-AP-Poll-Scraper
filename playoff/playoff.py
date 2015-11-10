@@ -134,12 +134,21 @@ def espnProcess(games,pre=''):
 		teamscores.append(game['competitions'][0]['competitors'][1]['score'])
 		if not team[0] in teams: teams[team[0]]={}
 		if not team[1] in teams: teams[team[1]]={}
+		if pre=='next_week_':
+			teams[team[0]][pre+'game_raw']=team[1].strip()
+			teams[team[1]][pre+'game_raw']=team[0].strip()
 		if game['competitions'][0]['competitors'][0]['homeAway'] == 'home':
 			teams[team[0]][pre+'game']='vs. '+team[1]
 			teams[team[1]][pre+'game']='@ '+team[0]
+			if pre == 'next_week_':
+				teams[team[0]][pre+'game_raw_sym']='vs. '
+				teams[team[1]][pre+'game_raw_sym']='@ '
 		elif game['competitions'][0]['competitors'][1]['homeAway'] == 'home':
 			teams[team[0]][pre+'game']='@ '+team[1]
 			teams[team[1]][pre+'game']='vs. '+team[0]
+			if pre == 'next_week_':
+				teams[team[0]][pre+'game_raw_sym']='@ '
+				teams[team[1]][pre+'game_raw_sym']='vs. '
 		if int(teamscores[0]) < int(teamscores[1]):
 			teams[team[0]][pre+'score']='**L** '+teamscores[0]+'-'+teamscores[1]
 			teams[team[1]][pre+'score']='**W** '+teamscores[0]+'-'+teamscores[1]
