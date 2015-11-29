@@ -1,4 +1,8 @@
 # This has been tested in Python 3.5 with BeautifulSoup 4 installed.
+doAll=False
+if doAll:
+	max_ct_vote=40
+else: max_ct_vote=4
 
 from bs4 import BeautifulSoup
 import json, urllib.request
@@ -40,7 +44,7 @@ def apProcess(ap,pre=''):
 		record=record[record.find(':')+1:].strip()
 		if not team in teams:
 			teams[team]={}
-			print ('No record of '+team+'. Perhaps a bye week? Or a mismatch between ESPN and AP?')
+			#print ('No record of '+team+'. Perhaps a bye week? Or a mismatch between ESPN and AP?')
 		teams[team][pre+'rank']=rank
 		teams[team][pre+'votes']=votes
 		teams[team][pre+'conference']=conference
@@ -73,7 +77,7 @@ def apProcess(ap,pre=''):
 			if not team in ap_teams:
 				ap_teams.append(team)
 				if not team in teams: 
-					print ('No record of '+team+'. Perhaps a bye week? Or a mismatch between ESPN and AP?')
+					#print ('No record of '+team+'. Perhaps a bye week? Or a mismatch between ESPN and AP?')
 					teams[team]={}
 			teams[team][pre+'rank']=rank
 			teams[team][pre+'votes']=votes
@@ -93,7 +97,11 @@ voter_urls={}
 voters=ap_main.findAll('span',{'class':'poll-voter'})
 total_ranks=0
 voter_diff={}
+voters_list=[]
+#print (voters)
+teams_votes={}
 for voter in voters:
+	#print (voters)
 	#print ('http://collegefootball.ap.org'+str(voter.find('a')['href']))
 	v_url=BeautifulSoup(loadUrl('http://collegefootball.ap.org'+str(voter.find('a')['href'])),"html.parser")
 	rank=1
@@ -101,6 +109,7 @@ for voter in voters:
 	voter_name=voter_name[voter_name.find('As Voted by'):]
 	voter_name=voter_name[voter_name.find('>')+1:]
 	voter_name=str(voter_name[:voter_name.find('<')])
+	voters_list.append(voter_name)
 	if not voter_name in voter_diff: voter_diff[voter_name]=0
 	voter_urls[voter_name]='http://collegefootball.ap.org'+str(voter.find('a')['href'])
 	votes_list_check=list(range(1,26))
@@ -111,8 +120,10 @@ for voter in voters:
 			votes[team]=[]
 			votes_with_nr[team]=[]
 			votes_with_26[team]=[]
-		voter_diff[voter_name]+=abs(teams_ranks[team]-int(rank))
+			teams_votes[team]=0
+		if team in teams_ranks: voter_diff[voter_name]+=abs(teams_ranks[team]-int(rank))
 		votes[team].append(int(rank))
+		teams_votes[team]+=26-int(rank)
 		total_ranks+=int(rank)
 		votes_list_check.pop(votes_list_check.index(int(rank)))
 		votes_with_nr[team].append(int(rank))
@@ -124,36 +135,46 @@ for voter in voters:
 	if len(votes_list_check) != 0:
 		print (votes_list_check)
 		print (voter)
-final_text='Team|Min|Max|Mode|Mean|Median\n:--|:--|:--|:--|:--|:--|\n'
+final_text='Team|Min|Max|Mode|Average*|Median|Standard Deviation*\n:--|:--|:--|:--|:--|:--|:--|\n'
+for team in votes_with_voters:
+	this_team_voters=[]
+	for vote in votes_with_voters[team]:
+		for voter in votes_with_voters[team][vote]: this_team_voters.append(voter)
+	this_team_nonvoters=[]
+	for voter in voters_list:
+		if voter not in this_team_voters:
+			if not 'NR' in votes_with_voters[team]: votes_with_voters[team]['NR']=[]
+			votes_with_voters[team]['NR'].append(voter)
 for a,b in votes_with_nr.items():
 	while len(b) < len(voters): b.append('NR')
 for a,b in votes_with_26.items():
 	while len(b) < len(voters): b.append(26)
+#print (votes_with_voters)
 for team in order:
 	a=team
 	if a in votes:
 		b=votes[a]
 		maxx=str(max(votes_with_26[a]))
-		if maxx in votes_with_voters[a] and len(votes_with_voters[a][maxx]) < 4:
+		if maxx=='26': maxx='NR'
+		if maxx in votes_with_voters[a] and len(votes_with_voters[a][maxx]) < max_ct_vote:
 			c=0
 			mold=maxx
 			maxx+=' ('
 			for voter in votes_with_voters[a][mold]:
 				if c!=0: maxx+=', '
 				c=1
-				#maxx+='['+voter+']('+voter_urls[voter]+')' # makes the post too long :(
+				if doAll: maxx+='['+voter+']('+voter_urls[voter]+')' # makes the post too long :(
 				maxx+=voter
 			maxx+=')'
-		if maxx=='26': maxx='NR'
 		minn=str(min(b))
-		if minn in votes_with_voters[a] and len(votes_with_voters[a][minn]) < 4:
+		if minn in votes_with_voters[a] and len(votes_with_voters[a][minn]) < max_ct_vote:
 			c=0
 			mold=minn
 			minn+=' ('
 			for voter in votes_with_voters[a][mold]:
 				if c!=0: minn+=', '
 				c=1
-				#minn+='['+voter+']('+voter_urls[voter]+')' # Makes the post too long! :(
+				if doAll: minn+='['+voter+']('+voter_urls[voter]+')' # Makes the post too long! :(
 				minn+=voter
 			minn+=')'
 		data=Counter(votes_with_nr[a])
@@ -161,9 +182,12 @@ for team in order:
 		mode=str(mode)
 		mean=str(round(float(sum(b)/len(b)),1))
 		median=str(statistics.median(votes_with_26[a]))
+		if len(b) > 1: st_dev=str(round(statistics.stdev(b),2))
+		else: st_dev='NA'
 		if median == '26': median='NR'
-		final_text+=a+'|'+maxx+'|'+minn+'|'+mode+'|'+mean+'|'+median+'\n'
+		final_text+=a+'|'+maxx+'|'+minn+'|'+mode+'|'+mean+'|'+median+'|'+st_dev+'\n'
 print (total_ranks)
+final_text+'*Among voters who ranked the team\n\n'
 voter_c = reversed(sorted(voter_diff.items(), key=operator.itemgetter(1)))
 ct = 0
 final_text+='\n\nMost controversial ballots:\n\nVoter|Average Difference from Poll\n:--|:--|\n'
@@ -175,3 +199,9 @@ for c in voter_c:
 	ct+=1
 	if ct <= 10: final_text+=a+'|'+str(round(b/25,1))+'\n'
 open('output.txt','w').write(final_text)
+teams_votes=sorted(teams_votes.items(), key=operator.itemgetter(1))
+teams_votes.reverse()
+z=''
+for a in teams_votes:
+	z+=', '+str(a[0])+' '+str(a[1])
+open('votes.txt','w').write(z)
